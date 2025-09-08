@@ -7,6 +7,11 @@ import (
 )
 
 func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
+	h := f.config.ResourceHandlerFunc
+	if h == nil {
+		slog.Warn("No resource handler configured")
+		return
+	}
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		slog.Error("Unauthorized: missing Authorization header")
@@ -21,7 +26,7 @@ func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	accessToken := parts[1]
-	ok, err := f.store.VerifyAccessToken(accessToken)
+	data, ok, err := f.store.VerifyAccessToken(accessToken)
 	if err != nil {
 		slog.Error("Error verifying access token", "err", err)
 		http.Error(w, "Error verifying access token", http.StatusInternalServerError)
@@ -32,10 +37,6 @@ func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid access token", http.StatusUnauthorized)
 		return
 	}
-	h := f.config.ResourceHandlerFunc
-	if h == nil {
-		slog.Warn("No resource handler configured")
-		return
-	}
+	r = r.WithContext(ContextWithAccessTokenData(r.Context(), data))
 	h(w, r)
 }

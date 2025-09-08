@@ -22,14 +22,14 @@ type FlowConfig struct {
 	// For dynamic client registration.
 	NewClientCredentialsFunc func() (clientID, clientSecret string)
 	// For generating new access tokens.
-	NewAccessTokenFunc func() string
+	NewAccessTokenFunc func(data AccessTokenData) string
 	// For generating new authorization codes.
 	NewAuthCodeFunc func() string
 }
 
 type FlowStateStore interface {
 	StoreAccessToken(token string) error
-	VerifyAccessToken(token string) (bool, error)
+	VerifyAccessToken(token string) (AccessTokenData, bool, error)
 	RegisterClient(clientID, clientSecret string) error
 	VerifyClient(clientID, clientSecret string) (bool, error)
 	StoreAuthCode(code string, data AuthCodeData) error

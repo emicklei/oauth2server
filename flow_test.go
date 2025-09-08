@@ -15,7 +15,7 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 		NewClientCredentialsFunc: func() (string, string) {
 			return "YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET"
 		},
-		NewAccessTokenFunc: func() string {
+		NewAccessTokenFunc: func(data AccessTokenData) string {
 			return "new-access-token"
 		},
 		NewAuthCodeFunc: func() string {

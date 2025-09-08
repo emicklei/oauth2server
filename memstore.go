@@ -7,7 +7,7 @@ import (
 type InMemoryFlowStore struct {
 	clients      map[string]string
 	authCodes    map[string]AuthCodeData
-	accessTokens map[string]bool
+	accessTokens map[string]AccessTokenData
 }
 
 func NewInMemoryFlowStore() *InMemoryFlowStore {
@@ -16,7 +16,7 @@ func NewInMemoryFlowStore() *InMemoryFlowStore {
 			"YOUR_CLIENT_ID": "YOUR_CLIENT_SECRET",
 		},
 		authCodes:    make(map[string]AuthCodeData),
-		accessTokens: make(map[string]bool),
+		accessTokens: make(map[string]AccessTokenData),
 	}
 }
 
@@ -53,9 +53,9 @@ func (s *InMemoryFlowStore) StoreAccessToken(token string) error {
 	return nil
 }
 
-func (s *InMemoryFlowStore) VerifyAccessToken(token string) (bool, error) {
-	_, ok := s.accessTokens[token]
-	return ok, nil
+func (s *InMemoryFlowStore) VerifyAccessToken(token string) (AccessTokenData, bool, error) {
+	v, ok := s.accessTokens[token]
+	return v, ok, nil
 }
 
 func (s *InMemoryFlowStore) NewAccessToken() (string, error) {
