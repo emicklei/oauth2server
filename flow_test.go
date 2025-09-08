@@ -18,6 +18,9 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 		NewAccessTokenFunc: func() string {
 			return "new-access-token"
 		},
+		NewAuthCodeFunc: func() string {
+			return "new-auth-code"
+		},
 	}
 	flow := NewFlow(config, store)
 

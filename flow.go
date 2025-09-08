@@ -18,11 +18,13 @@ func NewFlow(config FlowConfig, store FlowStateStore) *Flow {
 
 type FlowConfig struct {
 	// The resource protected by OAuth2.
-	ResourceHandler http.Handler
+	ResourceHandlerFunc http.HandlerFunc
 	// For dynamic client registration.
 	NewClientCredentialsFunc func() (clientID, clientSecret string)
 	// For generating new access tokens.
 	NewAccessTokenFunc func() string
+	// For generating new authorization codes.
+	NewAuthCodeFunc func() string
 }
 
 type FlowStateStore interface {

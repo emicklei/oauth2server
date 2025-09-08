@@ -13,7 +13,7 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		// "Log in" the user
 		r.ParseForm()
 		if r.Form.Get("username") == "user" && r.Form.Get("password") == "pass" {
-			code := "some-random-code" // In a real app, generate a random code
+			code := f.config.NewAuthCodeFunc()
 			if err := f.store.StoreAuthCode(code, AuthCodeData{
 				CodeChallenge:       r.URL.Query().Get("code_challenge"),
 				CodeChallengeMethod: r.URL.Query().Get("code_challenge_method"),

@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+const OauthServerMetadataPath = "/.well-known/oauth-authorization-server"
+
 func (f *Flow) OauthServerMetadata(w http.ResponseWriter, r *http.Request) {
 	metadata := OauthServerMetadata{
 		Issuer:                "http://localhost:8080",

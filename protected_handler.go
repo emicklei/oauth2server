@@ -32,8 +32,10 @@ func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid access token", http.StatusUnauthorized)
 		return
 	}
-	if h := f.config.ResourceHandler; h != nil {
-		h.ServeHTTP(w, r)
+	h := f.config.ResourceHandlerFunc
+	if h == nil {
+		slog.Warn("No resource handler configured")
 		return
 	}
+	h(w, r)
 }

@@ -59,5 +59,5 @@ func (s *InMemoryFlowStore) VerifyAccessToken(token string) (bool, error) {
 }
 
 func (s *InMemoryFlowStore) NewAccessToken() (string, error) {
-	return "?", fmt.Errorf("not implemented")
+	return fmt.Sprintf("access-token-%d", len(s.accessTokens)+1), nil
 }
