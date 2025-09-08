@@ -26,7 +26,7 @@ func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	accessToken := parts[1]
-	data, ok, err := f.store.VerifyAccessToken(accessToken)
+	data, ok, err := f.store.LoadAccessToken(accessToken) // TODO
 	if err != nil {
 		slog.Error("Error verifying access token", "err", err)
 		http.Error(w, "Error verifying access token", http.StatusInternalServerError)

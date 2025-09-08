@@ -59,15 +59,10 @@ func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO: Validate the client ID and client secret.
-	accessToken := f.config.NewAccessTokenFunc()
-	if err := f.store.StoreAccessToken(accessToken); err != nil {
-		slog.Error("failed to store access token", "err", err)
-		http.Error(w, "failed to store access token", http.StatusInternalServerError)
-		return
-	}
+	accessToken, _, _ := f.store.LoadAccessToken(code)
 	w.Header().Set("Content-Type", "application/json")
 	resp := TokenResponse{
-		AccessToken: accessToken,
+		AccessToken: accessToken["token"].(string), // TODO
 		TokenType:   "bearer",
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

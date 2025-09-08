@@ -25,11 +25,23 @@ type FlowConfig struct {
 	NewAccessTokenFunc func(data AccessTokenData) string
 	// For generating new authorization codes.
 	NewAuthCodeFunc func() string
+
+	AccessTokenFromRequestFunc func(r *http.Request) (string, error)
+
+	LoginEndpoint             string
+	AuthorizationBaseEndpoint string
+
+	ResourcePath        string
+	AuthorizePath       string
+	AuthenticatedPath   string
+	TokenPath           string
+	RegisterPath        string
+	AuthorizationScopes []string
 }
 
 type FlowStateStore interface {
-	StoreAccessToken(token string) error
-	VerifyAccessToken(token string) (AccessTokenData, bool, error)
+	StoreAccessToken(code, token string) error
+	LoadAccessToken(code string) (AccessTokenData, bool, error)
 	RegisterClient(clientID, clientSecret string) error
 	VerifyClient(clientID, clientSecret string) (bool, error)
 	StoreAuthCode(code string, data AuthCodeData) error

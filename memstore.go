@@ -48,13 +48,13 @@ func (s *InMemoryFlowStore) DeleteAuthCode(code string) error {
 	return nil
 }
 
-func (s *InMemoryFlowStore) StoreAccessToken(token string) error {
-	s.accessTokens[token] = true
+func (s *InMemoryFlowStore) StoreAccessToken(code, token string) error {
+	s.accessTokens[code] = AccessTokenData{"token": token}
 	return nil
 }
 
-func (s *InMemoryFlowStore) VerifyAccessToken(token string) (AccessTokenData, bool, error) {
-	v, ok := s.accessTokens[token]
+func (s *InMemoryFlowStore) LoadAccessToken(code string) (AccessTokenData, bool, error) {
+	v, ok := s.accessTokens[code]
 	return v, ok, nil
 }
 

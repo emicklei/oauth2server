@@ -1,42 +1,36 @@
 package oauth2server
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path"
 )
 
 func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
-	// In a real application, you would redirect to a login and consent page.
-	// Here we will show a login page.
-	if r.Method == http.MethodPost {
-		// "Log in" the user
-		r.ParseForm()
-		if r.Form.Get("username") == "user" && r.Form.Get("password") == "pass" {
-			code := f.config.NewAuthCodeFunc()
-			if err := f.store.StoreAuthCode(code, AuthCodeData{
-				CodeChallenge:       r.URL.Query().Get("code_challenge"),
-				CodeChallengeMethod: r.URL.Query().Get("code_challenge_method"),
-			}); err != nil {
-				slog.Error("failed to store auth code", "err", err)
-				http.Error(w, "failed to store auth code", http.StatusInternalServerError)
-				return
-			}
-			redirectURL := r.URL.Query().Get("redirect_uri")
-			state := r.URL.Query().Get("state")
-			http.Redirect(w, r, fmt.Sprintf("%s?code=%s&state=%s", redirectURL, code, state), http.StatusFound)
-			return
-		}
+	// In a real implementation, you would validate the client_id, redirect_uri, etc.
+	// and prompt the user for consent.
+	// For this example, we'll just redirect.
+
+	newURL, err := url.Parse(f.config.LoginEndpoint)
+	if err != nil {
+		http.Error(w, "failed to parse auth url", http.StatusInternalServerError)
+		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, `
-		<h1>Login</h1>
-		<form method="post">
-			<label for="username">Username:</label>
-			<input type="text" id="username" name="username"><br><br>
-			<label for="password">Password:</label>
-			<input type="password" id="password" name="password"><br><br>
-			<input type="submit" value="Login">
-		</form>
-	`)
+	// pass on new redirect_uri to come back to beacon
+	// redirect_uri=https://mcp.requirehub.app/authenticed?<query or this request>
+
+	// the base64 may not have been needed
+
+	base64QueryEncoded := base64.StdEncoding.EncodeToString([]byte(r.URL.Query().Encode()))
+	redirect_uri := fmt.Sprintf(path.Join(f.config.AuthorizationBaseEndpoint, f.config.AuthenticatedPath, "?client_query=%s"), base64QueryEncoded)
+
+	newVales := url.Values{}
+	newVales.Set("redirect_uri", redirect_uri)
+	newURL.RawQuery = newVales.Encode()
+
+	slog.Debug("HandleAuthorize:redirecting to auth url", "url", newURL.String(), "redirect_uri", redirect_uri)
+	http.Redirect(w, r, newURL.String(), http.StatusFound)
 }
