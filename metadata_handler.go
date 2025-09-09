@@ -24,7 +24,7 @@ func (f *Flow) OauthServerMetadata(w http.ResponseWriter, r *http.Request) {
 		ResponseTypesSupported:            []string{"code"},
 		GrantTypesSupported:               []string{"authorization_code"},
 		TokenEndpointAuthMethodsSupported: []string{"client_secret_post"},
-		CodeChallengeMethodsSupported:     []string{"S256", "plain"},
+		CodeChallengeMethodsSupported:     []string{"S256"},
 
 		// JwksURI:"http://localhost:8080/.well-known/jwks.json", // Example, not implemented
 	}

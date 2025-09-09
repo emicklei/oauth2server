@@ -17,7 +17,8 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	client, err := f.store.GetClient(clientID)
 	if err != nil {
-		http.Error(w, "invalid client_id", http.StatusBadRequest)
+		slog.Warn("failed to get client", "client_id", clientID, "error", err)
+		http.Error(w, "invalid client_id (clear DCR cache if applicable)", http.StatusBadRequest)
 		return
 	}
 	redirectURI := r.URL.Query().Get("redirect_uri")
