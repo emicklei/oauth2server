@@ -1,6 +1,8 @@
 package oauth2server
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -94,11 +96,18 @@ func TestOAuth2Flow(t *testing.T) {
 
 	// 2. Authorize and redirect to Auth
 	state := randSeq(4)
+
+	codeVerifier := randSeq(64)
+	s256 := sha256.Sum256([]byte(codeVerifier))
+	codeChallenge := base64.RawURLEncoding.EncodeToString(s256[:])
+
 	query := url.Values{}
 	query.Set("client_id", clientID.(string))
 	query.Set("response_type", "code")
 	query.Set("redirect_uri", callback)
 	query.Set("state", state)
+	query.Set("code_challenge", codeChallenge)
+	query.Set("code_challenge_method", "S256")
 	req, _ = http.NewRequest("GET", local.URL+config.AuthorizePath+"?"+query.Encode(), nil)
 
 	resp, err = client.Do(req)
@@ -110,20 +119,12 @@ func TestOAuth2Flow(t *testing.T) {
 	}
 
 	// 3. Get Token
-
-	// client_id=9a6a1dbe-546f-4983-96b0-23b267aaba76
-	// &grant_type=authorization_code
-	// &code=1e6b0a73-06c0-4622-bc6a-d6929e70efe1
-	// &redirect_uri=http%3A%2F%2F127.0.0.1%3A33418
-	// &code_verifier=9122e976a511934fb8918c766d2e9e34ad5a75e89d0859ff292dfcb1a92160e3
-	// &client_secret=a021fce1-ebd0-4862-a8c1-ded798adbaae"
-
 	form = url.Values{}
 	form.Set("client_id", clientID.(string))
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
 	form.Set("redirect_uri", callback)
-	form.Set("code_verifier", "9122e976a511934fb8918c766d2e9e34ad5a75e89d0859ff292dfcb1a92160e3") // TODO how to compute this
+	form.Set("code_verifier", codeVerifier)
 	form.Set("client_secret", clientSecret.(string))
 
 	req, _ = http.NewRequest("POST", local.URL+config.TokenPath, strings.NewReader(form.Encode()))
