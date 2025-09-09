@@ -2,6 +2,7 @@ package oauth2server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"path"
 )
@@ -27,4 +28,6 @@ func (f *Flow) OauthServerMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metadata)
+
+	slog.Debug("served OAuth2 server metadata", "host", host, "metadata", metadata)
 }

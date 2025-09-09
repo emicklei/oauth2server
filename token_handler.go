@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// Exchange code for access token
 func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	code := r.Form.Get("code")
@@ -59,14 +60,22 @@ func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO: Validate the client ID and client secret.
-	accessToken, _, _ := f.store.LoadAccessToken(code)
+
+	accessToken, err := f.store.LoadAccessToken(code)
+	if err != nil {
+		slog.Error("failed to load access token", "err", err)
+		http.Error(w, "failed to load access token", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	resp := TokenResponse{
-		AccessToken: accessToken["token"].(string), // TODO
+		AccessToken: accessToken,
 		TokenType:   "bearer",
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		slog.Error("failed to write token response", "err", err)
 		// http status is already sent
 	}
+	slog.Debug("exchanged code for access token", "code", code, "access_token", resp.AccessToken)
 }

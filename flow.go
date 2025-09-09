@@ -20,13 +20,11 @@ type FlowConfig struct {
 	// The resource protected by OAuth2.
 	ResourceHandlerFunc http.HandlerFunc
 	// For dynamic client registration.
-	NewClientCredentialsFunc func() (clientID, clientSecret string)
-	// For generating new access tokens.
-	NewAccessTokenFunc func(data AccessTokenData) string
+	NewClientSecretFunc func(r *http.Request) string
 	// For generating new authorization codes.
-	NewAuthCodeFunc func() string
-
-	AccessTokenFromRequestFunc func(r *http.Request) (string, error)
+	NewAuthCodeFunc func(r *http.Request) string
+	// For generating new access tokens.
+	NewAccessTokenFunc func(r *http.Request) (string, error)
 
 	LoginEndpoint             string
 	AuthorizationBaseEndpoint string
@@ -41,7 +39,8 @@ type FlowConfig struct {
 
 type FlowStateStore interface {
 	StoreAccessToken(code, token string) error
-	LoadAccessToken(code string) (AccessTokenData, bool, error)
+	LoadAccessToken(code string) (string, error)
+	VerifyAccessToken(token string) (bool, error)
 	RegisterClient(clientID, clientSecret string) error
 	VerifyClient(clientID, clientSecret string) (bool, error)
 	StoreAuthCode(code string, data AuthCodeData) error

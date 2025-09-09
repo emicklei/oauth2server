@@ -13,7 +13,7 @@ func (f *Flow) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		// "Log in" the user
 		r.ParseForm()
 		if r.Form.Get("username") == "user" && r.Form.Get("password") == "pass" {
-			code := f.config.NewAuthCodeFunc()
+			code := f.config.NewAuthCodeFunc(r)
 			if err := f.store.StoreAuthCode(code, AuthCodeData{
 				CodeChallenge:       r.URL.Query().Get("code_challenge"),
 				CodeChallengeMethod: r.URL.Query().Get("code_challenge_method"),

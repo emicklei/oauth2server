@@ -2,24 +2,30 @@ package oauth2server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
 
+func init() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug})))
+}
+
 func TestOAuth2FlowWithRecorder(t *testing.T) {
 	store := NewInMemoryFlowStore()
 	config := FlowConfig{
-		NewClientCredentialsFunc: func() (string, string) {
-			return "YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET"
+		NewClientSecretFunc: func(r *http.Request) string {
+			return "YOUR_CLIENT_SECRET"
 		},
-		NewAccessTokenFunc: func(data AccessTokenData) string {
-			return "new-access-token"
-		},
-		NewAuthCodeFunc: func() string {
+		NewAuthCodeFunc: func(r *http.Request) string {
 			return "new-auth-code"
+		},
+		NewAccessTokenFunc: func(r *http.Request) (string, error) {
+			return "access-token", nil
 		},
 	}
 	flow := NewFlow(config, store)
@@ -28,12 +34,13 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 	clientName := "test-client"
 	form := url.Values{}
 	form.Add("client_name", clientName)
+	form.Add("redirect_uris", "http://localhost:8080/callback")
 	req, _ := http.NewRequest("POST", "/register", strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	flow.RegisterHandler(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d", rr.Code)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status 201 Created, got %d", rr.Code)
 	}
 
 	// 2. Authorize and get an authorization code

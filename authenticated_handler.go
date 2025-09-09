@@ -9,7 +9,7 @@ import (
 
 func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	vals := r.URL.Query()
-	slog.Debug("HandleAuthenticated", "query", vals)
+	slog.Debug("AuthenticatedHandler", "query", vals)
 
 	base64QueryEncoded := vals.Get("client_query")
 	decodedUri, err := base64.StdEncoding.DecodeString(base64QueryEncoded)
@@ -17,13 +17,13 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to decode client_query", http.StatusBadRequest)
 		return
 	}
-	slog.Debug("HandleAuthenticated:decoded client_query", "decoded", string(decodedUri))
+	slog.Debug("decoded client_query", "decoded", string(decodedUri))
 	vals, err = url.ParseQuery(string(decodedUri))
 	if err != nil {
 		http.Error(w, "failed to parse client_query", http.StatusBadRequest)
 		return
 	}
-	slog.Debug("HandleAuthenticated:parsed client_query", "vals", vals)
+	slog.Debug("parsed client_query", "vals", vals)
 	redirectUri := vals.Get("redirect_uri")
 	if redirectUri == "" {
 		http.Error(w, "missing redirect_uri", http.StatusBadRequest)
@@ -37,14 +37,14 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := f.config.AccessTokenFromRequestFunc(r)
+	accessToken, err := f.config.NewAccessTokenFunc(r)
 	if err != nil {
 		slog.Error("failed to extract access token from request", "err", err)
 		http.Error(w, "failed to extract access token from request", http.StatusBadRequest)
 		return
 	}
 
-	code := f.config.NewAuthCodeFunc()
+	code := f.config.NewAuthCodeFunc(r)
 	f.store.StoreAccessToken(code, accessToken)
 
 	// TODO  only valid for response_type=code
@@ -53,6 +53,7 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	redirectVals.Set("state", vals.Get("state"))
 	redirectURL.RawQuery = redirectVals.Encode()
 
-	slog.Info("HandleAuthenticated:redirecting to client", "redirect_uri", redirectURL.String())
 	http.Redirect(w, r, redirectURL.String(), http.StatusFound)
+
+	slog.Debug("redirecting to client", "redirect_uri", redirectURL.String())
 }

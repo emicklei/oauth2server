@@ -17,10 +17,20 @@ type TokenResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
+// RegistrationRequest is the JSON request for dynamic client registration
+// See https://www.rfc-editor.org/rfc/rfc7591#section-3.1
+type RegistrationRequest struct {
+	ClientName   string   `json:"client_name"`
+	RedirectURIs []string `json:"redirect_uris"`
+	GrantTypes   []string `json:"grant_types"`
+}
+
 // RegisterResponse is the JSON response for a successful client registration
 // See https://www.rfc-editor.org/rfc/rfc7591#section-3.2
 type RegisterResponse struct {
-	ClientID     string `json:"client_id"`
+	ClientID string `json:"client_id"`
+	// An OAuth client uses a client_secret to authenticate itself to the authorization server,
+	// proving its identity so it can obtain an access token
 	ClientSecret string `json:"client_secret"`
 }
 
@@ -39,17 +49,15 @@ type OauthServerMetadata struct {
 	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
 }
 
-type AccessTokenData map[string]any
+var accessTokenDataKey = struct{ TokenResponse }{}
 
-var accessTokenDataKey = struct{ AccessTokenData }{}
-
-func ContextWithAccessTokenData(ctx context.Context, data AccessTokenData) context.Context {
-	return context.WithValue(ctx, accessTokenDataKey, data)
+func ContextWithAccessToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, accessTokenDataKey, token)
 }
-func AccessTokenDataFromContext(ctx context.Context) AccessTokenData {
+func AccessTokenFromContext(ctx context.Context) string {
 	v := ctx.Value(accessTokenDataKey)
 	if v == nil {
-		return nil
+		return ""
 	}
-	return v.(AccessTokenData)
+	return v.(string)
 }

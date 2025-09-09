@@ -4,10 +4,12 @@ import (
 	"fmt"
 )
 
+var _ FlowStateStore = (*InMemoryFlowStore)(nil)
+
 type InMemoryFlowStore struct {
 	clients      map[string]string
 	authCodes    map[string]AuthCodeData
-	accessTokens map[string]AccessTokenData
+	accessTokens map[string]string
 }
 
 func NewInMemoryFlowStore() *InMemoryFlowStore {
@@ -16,7 +18,7 @@ func NewInMemoryFlowStore() *InMemoryFlowStore {
 			"YOUR_CLIENT_ID": "YOUR_CLIENT_SECRET",
 		},
 		authCodes:    make(map[string]AuthCodeData),
-		accessTokens: make(map[string]AccessTokenData),
+		accessTokens: make(map[string]string),
 	}
 }
 
@@ -49,13 +51,24 @@ func (s *InMemoryFlowStore) DeleteAuthCode(code string) error {
 }
 
 func (s *InMemoryFlowStore) StoreAccessToken(code, token string) error {
-	s.accessTokens[code] = AccessTokenData{"token": token}
+	s.accessTokens[code] = token
 	return nil
 }
 
-func (s *InMemoryFlowStore) LoadAccessToken(code string) (AccessTokenData, bool, error) {
-	v, ok := s.accessTokens[code]
-	return v, ok, nil
+func (s *InMemoryFlowStore) LoadAccessToken(code string) (string, error) {
+	data, ok := s.accessTokens[code]
+	if !ok {
+		return "", fmt.Errorf("access token not found")
+	}
+	return data, nil
+}
+
+func (s *InMemoryFlowStore) VerifyAccessToken(token string) (bool, error) {
+	_, ok := s.accessTokens[token]
+	if !ok {
+		return false, fmt.Errorf("access token not found")
+	}
+	return true, nil
 }
 
 func (s *InMemoryFlowStore) NewAccessToken() (string, error) {
