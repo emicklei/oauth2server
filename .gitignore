@@ -29,5 +29,4 @@ go.work.sum
 .DS_Store
 
 # Compiled binary
-example
 .specstory
