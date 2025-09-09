@@ -45,6 +45,10 @@ func TestOAuth2Flow(t *testing.T) {
 
 	store := NewInMemoryFlowStore()
 	config := FlowConfig{
+		AccessTokenHeaderName: "X-Access-Token",
+		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Protected Resource Accessed"))
+		},
 		NewClientSecretFunc: func(r *http.Request) string {
 			return "test-secret"
 		},
@@ -64,6 +68,7 @@ func TestOAuth2Flow(t *testing.T) {
 		TokenPath:                 "/test-token",
 		AuthenticatedPath:         "/test-authenticated",
 		RegisterPath:              "/test-register",
+		AuthorizationScopes:       []string{"email"},
 	}
 	flow := NewFlow(config, store)
 	flow.RegisterHandlers(mux)

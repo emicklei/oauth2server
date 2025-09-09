@@ -11,8 +11,9 @@ import (
 
 func main() {
 	config := oauth2server.FlowConfig{
+		AccessTokenHeaderName: "X-Access-Token",
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "Protected Resource Accessed")
+			fmt.Fprintln(w, "Protected Resource Accessed:", r.Header.Get("X-Access-Token"))
 		},
 		NewClientSecretFunc: func(r *http.Request) string {
 			return uuid.NewString()

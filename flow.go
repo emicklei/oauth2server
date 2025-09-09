@@ -1,6 +1,10 @@
 package oauth2server
 
-import "net/http"
+import (
+	"errors"
+	"log/slog"
+	"net/http"
+)
 
 // Flow holds all the state and configuration for the OAuth2 server.
 type Flow struct {
@@ -10,6 +14,12 @@ type Flow struct {
 
 // NewFlow creates a new Flow with initialized data stores.
 func NewFlow(config FlowConfig, store FlowStateStore) *Flow {
+	if err := config.Validate(); err != nil {
+		for _, e := range err {
+			slog.Error("missing flow configuration field", "err", e)
+		}
+		panic("invalid flow config")
+	}
 	return &Flow{
 		config: config,
 		store:  store,
@@ -17,6 +27,7 @@ func NewFlow(config FlowConfig, store FlowStateStore) *Flow {
 }
 
 type FlowConfig struct {
+	AccessTokenHeaderName string
 	// The resource protected by OAuth2.
 	ResourceHandlerFunc http.HandlerFunc
 	// For dynamic client registration.
@@ -37,6 +48,55 @@ type FlowConfig struct {
 	TokenPath           string
 	RegisterPath        string
 	AuthorizationScopes []string
+}
+
+func (c *FlowConfig) Validate() (list []error) {
+	if c.ResourceHandlerFunc == nil {
+		list = append(list, errors.New("ResourceHandlerFunc must be provided"))
+	}
+	if c.NewClientSecretFunc == nil {
+		list = append(list, errors.New("NewClientSecretFunc must be provided"))
+	}
+	if c.NewAuthCodeFunc == nil {
+		list = append(list, errors.New("NewAuthCodeFunc must be provided"))
+	}
+	if c.NewAccessTokenFunc == nil {
+		list = append(list, errors.New("NewAccessTokenFunc must be provided"))
+	}
+	if c.NewRefreshTokenFunc == nil {
+		list = append(list, errors.New("NewRefreshTokenFunc must be provided"))
+	}
+	if c.LoginEndpoint == "" {
+		list = append(list, errors.New("LoginEndpoint must be provided"))
+	}
+	if c.AuthorizationBaseEndpoint == "" {
+		list = append(list, errors.New("AuthorizationBaseEndpoint must be provided"))
+	}
+	if c.ResourcePath == "" {
+		list = append(list, errors.New("ResourcePath must be provided"))
+	}
+	if c.AuthorizePath == "" {
+		list = append(list, errors.New("AuthorizePath must be provided"))
+	}
+	if c.AuthenticatedPath == "" {
+		list = append(list, errors.New("AuthenticatedPath must be provided"))
+	}
+	if c.TokenPath == "" {
+		list = append(list, errors.New("TokenPath must be provided"))
+	}
+	if c.RegisterPath == "" {
+		list = append(list, errors.New("RegisterPath must be provided"))
+	}
+	if c.AccessTokenHeaderName == "" {
+		list = append(list, errors.New("AccessTokenHeaderName must be provided"))
+	}
+	if len(c.AuthorizationScopes) == 0 {
+		list = append(list, errors.New("at least one AuthorizationScope must be provided"))
+	}
+	if len(list) > 0 {
+		return list
+	}
+	return nil
 }
 
 type FlowStateStore interface {

@@ -1,7 +1,5 @@
 package oauth2server
 
-import "context"
-
 // AuthCodeData stores information about an authorization code
 // See https://www.rfc-editor.org/rfc/rfc7636#section-4.2
 type AuthCodeData struct {
@@ -60,17 +58,4 @@ type OauthServerMetadata struct {
 	GrantTypesSupported               []string `json:"grant_types_supported"`
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
 	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
-}
-
-var accessTokenDataKey = struct{ TokenResponse }{}
-
-func ContextWithAccessToken(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, accessTokenDataKey, token)
-}
-func AccessTokenFromContext(ctx context.Context) string {
-	v := ctx.Value(accessTokenDataKey)
-	if v == nil {
-		return ""
-	}
-	return v.(string)
 }

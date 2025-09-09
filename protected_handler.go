@@ -39,6 +39,6 @@ func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid access token", http.StatusUnauthorized)
 		return
 	}
-	r = r.WithContext(ContextWithAccessToken(r.Context(), accessToken))
+	r.Header.Set(f.config.AccessTokenHeaderName, accessToken)
 	h(w, r)
 }
