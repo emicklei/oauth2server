@@ -17,8 +17,8 @@ func main() {
 		NewClientSecretFunc: func(r *http.Request) string {
 			return uuid.NewString()
 		},
-		NewAccessTokenFunc: func(r *http.Request) string {
-			return uuid.NewString()
+		NewAccessTokenFunc: func(r *http.Request) (string, error) {
+			return uuid.NewString(), nil
 		},
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Protected Resource Accessed")

@@ -1,24 +1,20 @@
 package oauth2server
 
 import (
-	"encoding/base64"
 	"log/slog"
 	"net/http"
 	"net/url"
 )
 
+// AuthenticatedHandler is called from the Identity Provider after authenticating the user.
 func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handling authenticated", "url", r.URL.String())
+
 	vals := r.URL.Query()
 	slog.Debug("AuthenticatedHandler", "query", vals)
 
-	base64QueryEncoded := vals.Get("client_query")
-	decodedUri, err := base64.StdEncoding.DecodeString(base64QueryEncoded)
-	if err != nil {
-		http.Error(w, "failed to decode client_query", http.StatusBadRequest)
-		return
-	}
-	slog.Debug("decoded client_query", "decoded", string(decodedUri))
-	vals, err = url.ParseQuery(string(decodedUri))
+	clientQuery := vals.Get("client_query")
+	vals, err := url.ParseQuery(clientQuery)
 	if err != nil {
 		http.Error(w, "failed to parse client_query", http.StatusBadRequest)
 		return

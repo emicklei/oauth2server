@@ -7,6 +7,8 @@ import (
 )
 
 func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handling register", "url", r.URL.String())
+
 	if r.Method != http.MethodPost {
 		slog.Error("Method not allowed", "method", r.Method)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

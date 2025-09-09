@@ -22,7 +22,7 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 			return "YOUR_CLIENT_SECRET"
 		},
 		NewAuthCodeFunc: func(r *http.Request) string {
-			return "new-auth-code"
+			return randSeq(32)
 		},
 		NewAccessTokenFunc: func(r *http.Request) (string, error) {
 			return "access-token", nil
@@ -40,16 +40,20 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 	rr := httptest.NewRecorder()
 	flow.RegisterHandler(rr, req)
 	if rr.Code != http.StatusCreated {
-		t.Fatalf("expected status 201 Created, got %d", rr.Code)
+		t.Fatalf("expected status 201 Created, got %d, body: %s", rr.Code, rr.Body.String())
 	}
 
-	// 2. Authorize and get an authorization code
-	authURL := "/authorize?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:8080/callback&state=1234"
-	form = url.Values{}
-	form.Add("username", "user")
-	form.Add("password", "pass")
+	// 2. Authorize and redirect to Auth
+	var clientID string
+	{
+		var registerResponse RegisterResponse
+		if err := json.NewDecoder(rr.Body).Decode(&registerResponse); err != nil {
+			t.Fatalf("could not decode register response: %v, body: %s", err, rr.Body.String())
+		}
+		clientID = registerResponse.ClientID
+	}
+	authURL := "/authorize?response_type=code&client_id=" + clientID + "&redirect_uri=http://localhost:8080/callback&state=1234"
 	req, _ = http.NewRequest("POST", authURL, strings.NewReader(form.Encode()))
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	rr = httptest.NewRecorder()
 	flow.AuthorizeHandler(rr, req)
 	if rr.Code != http.StatusFound {
@@ -64,16 +68,16 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 		t.Fatal("did not get authorization code")
 	}
 
-	// 3. Exchange authorization code for an access token
+	// 4. Exchange authorization code for an access token
 	form = url.Values{}
 	form.Add("grant_type", "authorization_code")
 	form.Add("code", code)
-	req, _ = http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	tokenReq, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+	tokenReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	rr = httptest.NewRecorder()
-	flow.TokenHandler(rr, req)
+	flow.TokenHandler(rr, tokenReq)
 	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d", rr.Code)
+		t.Fatalf("expected status 200 OK, got %d, body: %s", rr.Code, rr.Body.String())
 	}
 	var tokenResponse map[string]interface{}
 	if err := json.NewDecoder(rr.Body).Decode(&tokenResponse); err != nil {
@@ -84,11 +88,11 @@ func TestOAuth2FlowWithRecorder(t *testing.T) {
 		t.Fatal("did not get access token")
 	}
 
-	// 4. Access protected resource
-	req, _ = http.NewRequest("GET", "/protected", nil)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	// 5. Access protected resource
+	protectedReq, _ := http.NewRequest("GET", "/protected", nil)
+	protectedReq.Header.Set("Authorization", "Bearer "+accessToken)
 	rr = httptest.NewRecorder()
-	flow.ProtectedHandler(rr, req)
+	flow.ProtectedHandler(rr, protectedReq)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected status 200 OK, got %d", rr.Code)
 	}

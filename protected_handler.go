@@ -7,6 +7,8 @@ import (
 )
 
 func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handling protected", "url", r.URL.String())
+
 	h := f.config.ResourceHandlerFunc
 	if h == nil {
 		slog.Warn("No resource handler configured")

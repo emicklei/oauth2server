@@ -10,6 +10,8 @@ import (
 const OauthServerMetadataPath = "/.well-known/oauth-authorization-server"
 
 func (f *Flow) OauthServerMetadata(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handling oauth server metadata", "url", r.URL.String())
+
 	host := f.config.AuthorizationBaseEndpoint
 	metadata := OauthServerMetadata{
 		Issuer:                host,

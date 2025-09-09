@@ -10,6 +10,8 @@ import (
 
 // Exchange code for access token
 func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handling token", "url", r.URL.String())
+
 	r.ParseForm()
 	code := r.Form.Get("code")
 	authData, ok, err := f.store.VerifyAuthCode(code)
@@ -61,10 +63,15 @@ func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// TODO: Validate the client ID and client secret.
 
-	accessToken, err := f.store.LoadAccessToken(code)
+	accessToken, err := f.config.NewAccessTokenFunc(r)
 	if err != nil {
-		slog.Error("failed to load access token", "err", err)
-		http.Error(w, "failed to load access token", http.StatusInternalServerError)
+		slog.Error("failed to generate access token", "err", err)
+		http.Error(w, "failed to generate access token", http.StatusInternalServerError)
+		return
+	}
+	if err := f.store.StoreAccessToken(code, accessToken); err != nil {
+		slog.Error("failed to store access token", "err", err)
+		http.Error(w, "failed to store access token", http.StatusInternalServerError)
 		return
 	}
 
