@@ -23,11 +23,14 @@ func main() {
 		NewRefreshTokenFunc: func(r *http.Request) (string, error) {
 			return uuid.NewString(), nil
 		},
+		NewAuthCodeFunc: func(r *http.Request) string {
+			return uuid.NewString()
+		},
 		RegisterPath:              "/oauth2/register",
 		AuthorizePath:             "/oauth2/authorize",
 		AuthenticatedPath:         "/oauth2/authenticated",
 		TokenPath:                 "/oauth2/token",
-		AuthorizationScopes:       []string{"all", "openid", "profile", "email"},
+		AuthorizationScopes:       []string{"email"},
 		LoginEndpoint:             "http://localhost:8080/login",
 		ResourcePath:              "/protected",
 		AuthorizationBaseEndpoint: "http://localhost:8080",
