@@ -1,6 +1,7 @@
 package oauth2server
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -43,9 +44,10 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to parse login url", http.StatusInternalServerError)
 		return
 	}
-	encodedQuery := r.URL.Query().Encode()
-	urlEncoded := url.QueryEscape(encodedQuery)
-	redirect_uri := fmt.Sprintf(f.config.AuthorizationBaseEndpoint+f.config.AuthenticatedPath+"?client_query=%s", urlEncoded)
+	// base64 encode the query is not strictly necessary but it makes it
+	// easier to read in logs and less error prone.
+	base64QueryEncoded := base64.StdEncoding.EncodeToString([]byte(r.URL.Query().Encode()))
+	redirect_uri := fmt.Sprintf(f.config.AuthorizationBaseEndpoint+f.config.AuthenticatedPath+"?client_query=%s", base64QueryEncoded)
 
 	newValues := url.Values{}
 	newValues.Set("redirect_uri", redirect_uri)

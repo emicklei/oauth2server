@@ -1,6 +1,7 @@
 package oauth2server
 
 import (
+	"encoding/base64"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -10,9 +11,15 @@ import (
 func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling authenticated", "url", r.URL.String())
 
-	vals := r.URL.Query()
-	clientQuery := vals.Get("client_query")
-	vals, err := url.ParseQuery(clientQuery)
+	// base64 decode the client_query as it is encoded by the AuthorizeHandler
+	base64QueryEncoded := r.URL.Query().Get("client_query")
+	decodedClientQuery, err := base64.StdEncoding.DecodeString(base64QueryEncoded)
+	if err != nil {
+		http.Error(w, "failed to decode client_query", http.StatusBadRequest)
+		return
+	}
+
+	vals, err := url.ParseQuery(string(decodedClientQuery))
 	if err != nil {
 		http.Error(w, "failed to parse client_query", http.StatusBadRequest)
 		return
@@ -20,6 +27,7 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("parsed client_query", "vals", vals)
 	redirectUri := vals.Get("redirect_uri")
 	if redirectUri == "" {
+		slog.Warn("missing redirect_uri", "vals", vals)
 		http.Error(w, "missing redirect_uri", http.StatusBadRequest)
 		return
 	}
