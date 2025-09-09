@@ -1,6 +1,7 @@
 package oauth2server
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -13,31 +14,16 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	// and prompt the user for consent.
 	// For this example, we'll just redirect.
 
-	//newURL, err := url.Parse(f.config.LoginEndpoint)
-	//if err != nil {
-	//	http.Error(w, "failed to parse auth url", http.StatusInternalServerError)
-	//	return
-	//}
-	authCode := f.config.NewAuthCodeFunc(r)
-	redirectURI := r.URL.Query().Get("redirect_uri")
-	if redirectURI == "" {
-		http.Error(w, "missing redirect_uri", http.StatusBadRequest)
-		return
-	}
-	// TODO: store the auth code
-	ru, err := url.Parse(redirectURI)
+	newURL, err := url.Parse(f.config.LoginEndpoint)
 	if err != nil {
-		http.Error(w, "invalid redirect_uri", http.StatusBadRequest)
+		http.Error(w, "failed to parse login url", http.StatusInternalServerError)
 		return
 	}
-	q := ru.Query()
-	q.Set("code", authCode)
-	ru.RawQuery = q.Encode()
+	redirect_uri := fmt.Sprintf(f.config.AuthorizationBaseEndpoint+f.config.AuthenticatedPath+"?client_query=%s", newURL.Query().Encode())
 
-	if err := f.store.StoreAuthCode(authCode, AuthCodeData{}); err != nil {
-		http.Error(w, "failed to store auth code", http.StatusInternalServerError)
-		return
-	}
+	newValues := url.Values{}
+	newValues.Set("redirect_uri", redirect_uri)
+	newURL.RawQuery = newValues.Encode()
 
-	http.Redirect(w, r, ru.String(), http.StatusFound)
+	http.Redirect(w, r, newURL.String(), http.StatusFound)
 }

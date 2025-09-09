@@ -11,8 +11,6 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling authenticated", "url", r.URL.String())
 
 	vals := r.URL.Query()
-	slog.Debug("AuthenticatedHandler", "query", vals)
-
 	clientQuery := vals.Get("client_query")
 	vals, err := url.ParseQuery(clientQuery)
 	if err != nil {
@@ -41,7 +39,11 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := f.config.NewAuthCodeFunc(r)
-	f.store.StoreAccessToken(code, accessToken)
+	if err := f.store.StoreAccessToken(code, accessToken); err != nil {
+		slog.Error("failed to store access token", "err", err)
+		http.Error(w, "failed to store access token", http.StatusInternalServerError)
+		return
+	}
 
 	// TODO  only valid for response_type=code
 	redirectVals := url.Values{}
@@ -51,5 +53,5 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, redirectURL.String(), http.StatusFound)
 
-	slog.Debug("redirecting to client", "redirect_uri", redirectURL.String())
+	slog.Debug("redirected to client", "redirect_uri", redirectURL.String())
 }

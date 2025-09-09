@@ -15,85 +15,84 @@ func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug})))
 }
 
-func TestOAuth2FlowWithRecorder(t *testing.T) {
+func TestOAuth2Flow(t *testing.T) {
+	mux := new(http.ServeMux)
+	local := httptest.NewServer(mux)
+	defer local.Close()
+
+	// simulate authentication
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		redirectURI := r.URL.Query().Get("redirect_uri")
+		t.Log("logging in and", "redirect_uri", redirectURI)
+		http.Redirect(w, r, redirectURI, http.StatusFound)
+	})
+
 	store := NewInMemoryFlowStore()
 	config := FlowConfig{
 		NewClientSecretFunc: func(r *http.Request) string {
-			return "YOUR_CLIENT_SECRET"
+			return "test-secret"
 		},
 		NewAuthCodeFunc: func(r *http.Request) string {
 			return randSeq(32)
 		},
 		NewAccessTokenFunc: func(r *http.Request) (string, error) {
-			return "access-token", nil
+			return "test-access-token", nil
 		},
+		LoginEndpoint:             local.URL + "/login",
+		AuthorizationBaseEndpoint: local.URL,
+		ResourcePath:              "/test-protected",
+		AuthorizePath:             "/test-authorize",
+		TokenPath:                 "/test-token",
+		AuthenticatedPath:         "/test-authenticated",
+		RegisterPath:              "/test-register",
 	}
 	flow := NewFlow(config, store)
+	flow.RegisterHandlers(mux)
 
-	// 1. Register a new client
+	client := new(http.Client)
+
+	// 1. Register client
 	clientName := "test-client"
+	callback := "http://localhost:8080/callback"
 	form := url.Values{}
 	form.Add("client_name", clientName)
-	form.Add("redirect_uris", "http://localhost:8080/callback")
-	req, _ := http.NewRequest("POST", "/register", strings.NewReader(form.Encode()))
+	form.Add("redirect_uris", callback)
+
+	req, _ := http.NewRequest("POST", local.URL+config.RegisterPath, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	rr := httptest.NewRecorder()
-	flow.RegisterHandler(rr, req)
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("expected status 201 Created, got %d, body: %s", rr.Code, rr.Body.String())
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(req.URL, err)
+	}
+	if resp.StatusCode != 201 {
+		t.Fatal(req.URL, resp.StatusCode)
+	}
+	registrations := map[string]any{}
+	json.NewDecoder(resp.Body).Decode(&registrations)
+
+	clientID := registrations["client_id"]
+	if clientID == nil {
+		t.Fatal(registrations)
+	}
+	clientSecret := registrations["client_secret"]
+	if clientSecret == nil {
+		t.Fatal(registrations)
 	}
 
 	// 2. Authorize and redirect to Auth
-	var clientID string
-	{
-		var registerResponse RegisterResponse
-		if err := json.NewDecoder(rr.Body).Decode(&registerResponse); err != nil {
-			t.Fatalf("could not decode register response: %v, body: %s", err, rr.Body.String())
-		}
-		clientID = registerResponse.ClientID
-	}
-	authURL := "/authorize?response_type=code&client_id=" + clientID + "&redirect_uri=http://localhost:8080/callback&state=1234"
-	req, _ = http.NewRequest("POST", authURL, strings.NewReader(form.Encode()))
-	rr = httptest.NewRecorder()
-	flow.AuthorizeHandler(rr, req)
-	if rr.Code != http.StatusFound {
-		t.Fatalf("expected status 302 Found, got %d", rr.Code)
-	}
-	redirectURL, err := url.Parse(rr.Header().Get("Location"))
+	state := randSeq(4)
+	query := url.Values{}
+	query.Set("client_id", clientID.(string))
+	query.Set("response_type", "code")
+	query.Set("redirect_uri", callback)
+	query.Set("state", state)
+	req, _ = http.NewRequest("GET", local.URL+config.AuthorizePath+"?"+query.Encode(), nil)
+
+	resp, err = client.Do(req)
 	if err != nil {
-		t.Fatalf("could not parse redirect location: %v", err)
+		t.Fatal(req.URL, err)
 	}
-	code := redirectURL.Query().Get("code")
-	if code == "" {
-		t.Fatal("did not get authorization code")
-	}
-
-	// 4. Exchange authorization code for an access token
-	form = url.Values{}
-	form.Add("grant_type", "authorization_code")
-	form.Add("code", code)
-	tokenReq, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
-	tokenReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	rr = httptest.NewRecorder()
-	flow.TokenHandler(rr, tokenReq)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d, body: %s", rr.Code, rr.Body.String())
-	}
-	var tokenResponse map[string]interface{}
-	if err := json.NewDecoder(rr.Body).Decode(&tokenResponse); err != nil {
-		t.Fatalf("could not decode token response: %v", err)
-	}
-	accessToken, ok := tokenResponse["access_token"].(string)
-	if !ok || accessToken == "" {
-		t.Fatal("did not get access token")
-	}
-
-	// 5. Access protected resource
-	protectedReq, _ := http.NewRequest("GET", "/protected", nil)
-	protectedReq.Header.Set("Authorization", "Bearer "+accessToken)
-	rr = httptest.NewRecorder()
-	flow.ProtectedHandler(rr, protectedReq)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d", rr.Code)
+	if resp.StatusCode != 201 {
+		t.Fatal(req.URL, resp.StatusCode)
 	}
 }

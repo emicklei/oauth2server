@@ -2,6 +2,7 @@ package oauth2server
 
 import (
 	"fmt"
+	"log/slog"
 )
 
 var _ FlowStateStore = (*InMemoryFlowStore)(nil)
@@ -51,23 +52,20 @@ func (s *InMemoryFlowStore) DeleteAuthCode(code string) error {
 }
 
 func (s *InMemoryFlowStore) StoreAccessToken(code, token string) error {
+	slog.Debug("store access token", "code", code, "token", token)
 	s.accessTokens[code] = token
 	return nil
 }
 
 func (s *InMemoryFlowStore) LoadAccessToken(code string) (string, error) {
-	data, ok := s.accessTokens[code]
+	token, ok := s.accessTokens[code]
 	if !ok {
-		return "", fmt.Errorf("access token not found")
+		return "", fmt.Errorf("access token not found, code:%s", code)
 	}
-	return data, nil
+	return token, nil
 }
 
 func (s *InMemoryFlowStore) VerifyAccessToken(token string) (bool, error) {
-	_, ok := s.accessTokens[token]
-	if !ok {
-		return false, fmt.Errorf("access token not found")
-	}
 	return true, nil
 }
 

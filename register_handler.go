@@ -61,5 +61,5 @@ func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to write register response", "err", err)
 		// http status is already sent
 	}
-	slog.Debug("Registered new client", "client_id", clientID, "client_name", req.ClientName, "redirect_uris", req.RedirectURIs)
+	slog.Debug("registered new client", "client_id", clientID, "client_name", req.ClientName, "redirect_uris", req.RedirectURIs)
 }

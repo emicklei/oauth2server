@@ -47,3 +47,12 @@ type FlowStateStore interface {
 	VerifyAuthCode(code string) (AuthCodeData, bool, error)
 	DeleteAuthCode(code string) error
 }
+
+func (f *Flow) RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc(OauthServerMetadataPath, f.OauthServerMetadata)
+	mux.HandleFunc(f.config.AuthorizePath, f.AuthorizeHandler)
+	mux.HandleFunc(f.config.AuthenticatedPath, f.AuthenticatedHandler)
+	mux.HandleFunc(f.config.TokenPath, f.TokenHandler)
+	mux.HandleFunc(f.config.ResourcePath, f.ProtectedHandler)
+	mux.HandleFunc(f.config.RegisterPath, f.RegisterHandler)
+}
