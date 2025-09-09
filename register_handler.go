@@ -44,9 +44,12 @@ func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientID := randSeq(32)
-	clientSecret := f.config.NewClientSecretFunc(r)
-	if err := f.store.RegisterClient(clientID, clientSecret); err != nil {
+	client := Client{
+		ID:           randSeq(32),
+		Secret:       f.config.NewClientSecretFunc(r),
+		RedirectURIs: req.RedirectURIs,
+	}
+	if err := f.store.RegisterClient(client); err != nil {
 		slog.Error("failed to register client", "err", err)
 		http.Error(w, "failed to register client", http.StatusInternalServerError)
 		return
@@ -54,12 +57,12 @@ func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	resp := RegisterResponse{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
+		ClientID:     client.ID,
+		ClientSecret: client.Secret,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		slog.Error("failed to write register response", "err", err)
 		// http status is already sent
 	}
-	slog.Debug("registered new client", "client_id", clientID, "client_name", req.ClientName, "redirect_uris", req.RedirectURIs)
+	slog.Debug("registered new client", "client_id", client.ID, "client_name", req.ClientName, "redirect_uris", req.RedirectURIs)
 }

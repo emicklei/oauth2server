@@ -8,32 +8,42 @@ import (
 var _ FlowStateStore = (*InMemoryFlowStore)(nil)
 
 type InMemoryFlowStore struct {
-	clients      map[string]string
-	authCodes    map[string]AuthCodeData
-	accessTokens map[string]string
+	clients       map[string]Client
+	authCodes     map[string]AuthCodeData
+	accessTokens  map[string]string
+	refreshTokens map[string]RefreshTokenData
 }
 
 func NewInMemoryFlowStore() *InMemoryFlowStore {
 	return &InMemoryFlowStore{
-		clients: map[string]string{
-			"YOUR_CLIENT_ID": "YOUR_CLIENT_SECRET",
+		clients: map[string]Client{
+			"YOUR_CLIENT_ID": {ID: "YOUR_CLIENT_ID", Secret: "YOUR_CLIENT_SECRET", RedirectURIs: []string{"http://localhost:8080/callback"}},
 		},
-		authCodes:    make(map[string]AuthCodeData),
-		accessTokens: make(map[string]string),
+		authCodes:     make(map[string]AuthCodeData),
+		accessTokens:  make(map[string]string),
+		refreshTokens: make(map[string]RefreshTokenData),
 	}
 }
 
-func (s *InMemoryFlowStore) RegisterClient(clientID, clientSecret string) error {
-	s.clients[clientID] = clientSecret
+func (s *InMemoryFlowStore) RegisterClient(client Client) error {
+	s.clients[client.ID] = client
 	return nil
 }
 
+func (s *InMemoryFlowStore) GetClient(clientID string) (*Client, error) {
+	client, ok := s.clients[clientID]
+	if !ok {
+		return nil, fmt.Errorf("client not found")
+	}
+	return &client, nil
+}
+
 func (s *InMemoryFlowStore) VerifyClient(clientID, clientSecret string) (bool, error) {
-	secret, ok := s.clients[clientID]
+	client, ok := s.clients[clientID]
 	if !ok {
 		return false, nil
 	}
-	return secret == clientSecret, nil
+	return client.Secret == clientSecret, nil
 }
 
 func (s *InMemoryFlowStore) StoreAuthCode(code string, data AuthCodeData) error {
@@ -71,4 +81,22 @@ func (s *InMemoryFlowStore) VerifyAccessToken(token string) (bool, error) {
 
 func (s *InMemoryFlowStore) NewAccessToken() (string, error) {
 	return fmt.Sprintf("access-token-%d", len(s.accessTokens)+1), nil
+}
+
+func (s *InMemoryFlowStore) StoreRefreshToken(token string, data RefreshTokenData) error {
+	s.refreshTokens[token] = data
+	return nil
+}
+
+func (s *InMemoryFlowStore) GetRefreshToken(token string) (*RefreshTokenData, error) {
+	data, ok := s.refreshTokens[token]
+	if !ok {
+		return nil, fmt.Errorf("refresh token not found")
+	}
+	return &data, nil
+}
+
+func (s *InMemoryFlowStore) DeleteRefreshToken(token string) error {
+	delete(s.refreshTokens, token)
+	return nil
 }

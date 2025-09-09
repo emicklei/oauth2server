@@ -39,9 +39,19 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := f.config.NewAuthCodeFunc(r)
+	codeChallenge := vals.Get("code_challenge")
+	if codeChallenge == "" {
+		http.Error(w, "missing code_challenge", http.StatusBadRequest)
+		return
+	}
+	codeChallengeMethod := vals.Get("code_challenge_method")
+	if codeChallengeMethod != "S256" {
+		http.Error(w, "code_challenge_method must be S256", http.StatusBadRequest)
+		return
+	}
 	data := AuthCodeData{
-		CodeChallenge:       vals.Get("code_challenge"),
-		CodeChallengeMethod: vals.Get("code_challenge_method"),
+		CodeChallenge:       codeChallenge,
+		CodeChallengeMethod: codeChallengeMethod,
 	}
 	if err := f.store.StoreAuthCode(code, data); err != nil {
 		slog.Error("failed to store auth data", "err", err)
