@@ -39,6 +39,16 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := f.config.NewAuthCodeFunc(r)
+	data := AuthCodeData{ // TODO
+		CodeChallenge:       "",
+		CodeChallengeMethod: "",
+	}
+	if err := f.store.StoreAuthCode(code, data); err != nil {
+		slog.Error("failed to store auth data", "err", err)
+		http.Error(w, "failed to store auth data", http.StatusInternalServerError)
+		return
+	}
+
 	if err := f.store.StoreAccessToken(code, accessToken); err != nil {
 		slog.Error("failed to store access token", "err", err)
 		http.Error(w, "failed to store access token", http.StatusInternalServerError)

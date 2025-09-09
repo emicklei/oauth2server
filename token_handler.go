@@ -8,15 +8,28 @@ import (
 	"net/http"
 )
 
-// Exchange code for access token
+// When the client needs an access token, it sends a request to the authorization server's token endpoint,
+// including its client_id and client_secret
 func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: check http method
+
 	slog.Debug("handling authenticated", "url", r.URL.String())
 
 	var code string
 	if r.Header.Get("content-type") == "application/x-www-form-urlencoded" {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			slog.Warn("unable to parse form data", "err", err)
+			http.Error(w, "unable to parse form data", http.StatusBadRequest)
+			return
+		}
 		code = r.Form.Get("code")
 	}
+	if code == "" {
+		slog.Error("missing authorization code in payload")
+		http.Error(w, "missing authorization code in payload", http.StatusBadRequest)
+		return
+	}
+
 	authData, ok, err := f.store.VerifyAuthCode(code)
 	if err != nil {
 		slog.Error("Error getting authorization code", "err", err)
@@ -24,8 +37,8 @@ func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
-		slog.Error("Invalid authorization code", "code", code)
-		http.Error(w, "Invalid authorization code", http.StatusBadRequest)
+		slog.Error("invalid authorization code", "code", code)
+		http.Error(w, "invalid authorization code", http.StatusBadRequest)
 		return
 	}
 
