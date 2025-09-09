@@ -12,7 +12,12 @@ import (
 )
 
 func init() {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug})))
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+		if a.Key == "time" || a.Key == "level" {
+			return slog.Attr{}
+		}
+		return a
+	}})))
 }
 
 func TestOAuth2Flow(t *testing.T) {
@@ -23,9 +28,16 @@ func TestOAuth2Flow(t *testing.T) {
 	// simulate authentication
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		redirectURI := r.URL.Query().Get("redirect_uri")
-		t.Log("logging in and", "redirect_uri", redirectURI)
+		t.Log("logging in and", "redirect_uri:", redirectURI)
+		r.AddCookie(&http.Cookie{Value: "test-cookie"})
 		http.Redirect(w, r, redirectURI, http.StatusFound)
 	})
+
+	// simulate callback handling
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		t.Log("called back", r.URL.Query())
+	})
+	callback := local.URL + "/callback"
 
 	store := NewInMemoryFlowStore()
 	config := FlowConfig{
@@ -53,7 +65,6 @@ func TestOAuth2Flow(t *testing.T) {
 
 	// 1. Register client
 	clientName := "test-client"
-	callback := "http://localhost:8080/callback"
 	form := url.Values{}
 	form.Add("client_name", clientName)
 	form.Add("redirect_uris", callback)
@@ -92,7 +103,7 @@ func TestOAuth2Flow(t *testing.T) {
 	if err != nil {
 		t.Fatal(req.URL, err)
 	}
-	if resp.StatusCode != 201 {
+	if resp.StatusCode != 200 {
 		t.Fatal(req.URL, resp.StatusCode)
 	}
 }

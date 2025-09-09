@@ -19,7 +19,9 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to parse login url", http.StatusInternalServerError)
 		return
 	}
-	redirect_uri := fmt.Sprintf(f.config.AuthorizationBaseEndpoint+f.config.AuthenticatedPath+"?client_query=%s", newURL.Query().Encode())
+	encodedQuery := r.URL.Query().Encode()
+	urlEncoded := url.QueryEscape(encodedQuery)
+	redirect_uri := fmt.Sprintf(f.config.AuthorizationBaseEndpoint+f.config.AuthenticatedPath+"?client_query=%s", urlEncoded)
 
 	newValues := url.Values{}
 	newValues.Set("redirect_uri", redirect_uri)
