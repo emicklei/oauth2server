@@ -13,8 +13,21 @@ type AuthCodeData struct {
 // See https://www.rfc-editor.org/rfc/rfc6749#section-5.1
 // See also oauth2.Token
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type RefreshTokenData struct {
+	AccessToken string
+}
+
+// Client holds information about a client
+type Client struct {
+	ID           string
+	Secret       string
+	RedirectURIs []string
 }
 
 // RegistrationRequest is the JSON request for dynamic client registration

@@ -8,92 +8,136 @@ import (
 	"net/http"
 )
 
-// When the client needs an access token, it sends a request to the authorization server's token endpoint,
-// including its client_id and client_secret
+// TokenHandler handles requests for access tokens.
 func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: check http method
-
-	slog.Debug("handling authenticated", "url", r.URL.String())
-
-	var code string
-	if r.Header.Get("content-type") == "application/x-www-form-urlencoded" {
-		if err := r.ParseForm(); err != nil {
-			slog.Warn("unable to parse form data", "err", err)
-			http.Error(w, "unable to parse form data", http.StatusBadRequest)
-			return
-		}
-		code = r.Form.Get("code")
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
-	if code == "" {
-		slog.Error("missing authorization code in payload")
-		http.Error(w, "missing authorization code in payload", http.StatusBadRequest)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
+	grantType := r.Form.Get("grant_type")
+	if grantType == "authorization_code" {
+		f.handleAuthorizationCodeGrant(w, r)
+		return
+	}
+	if grantType == "refresh_token" {
+		f.handleRefreshTokenGrant(w, r)
+		return
+	}
+	http.Error(w, "unsupported grant_type", http.StatusBadRequest)
+}
+
+func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Request) {
+	code := r.Form.Get("code")
+	if code == "" {
+		http.Error(w, "missing code", http.StatusBadRequest)
+		return
+	}
 	authData, ok, err := f.store.VerifyAuthCode(code)
 	if err != nil {
-		slog.Error("Error getting authorization code", "err", err)
-		http.Error(w, "Error getting authorization code", http.StatusInternalServerError)
+		http.Error(w, "failed to verify auth code", http.StatusInternalServerError)
 		return
 	}
 	if !ok {
-		slog.Error("invalid authorization code", "code", code)
-		http.Error(w, "invalid authorization code", http.StatusBadRequest)
+		http.Error(w, "invalid code", http.StatusBadRequest)
 		return
 	}
-
 	// PKCE verification
-	if authData.CodeChallenge != "" {
-		codeVerifier := r.Form.Get("code_verifier")
-		if codeVerifier == "" {
-			slog.Error("code_verifier required")
-			http.Error(w, "code_verifier required", http.StatusBadRequest)
-			return
-		}
-		switch authData.CodeChallengeMethod {
-		case "S256":
-			s256 := sha256.Sum256([]byte(codeVerifier))
-			challenge := base64.RawURLEncoding.EncodeToString(s256[:])
-			if challenge != authData.CodeChallenge {
-				slog.Error("invalid code_verifier", "challenge", challenge, "expected", authData.CodeChallenge)
-				http.Error(w, "invalid code_verifier", http.StatusBadRequest)
-				return
-			}
-		case "plain":
-			if codeVerifier != authData.CodeChallenge {
-				slog.Error("invalid code_verifier", "verifier", codeVerifier, "expected", authData.CodeChallenge)
-				http.Error(w, "invalid code_verifier", http.StatusBadRequest)
-				return
-			}
-		default:
-			slog.Error("unsupported code_challenge_method", "method", authData.CodeChallengeMethod)
-			http.Error(w, "unsupported code_challenge_method", http.StatusBadRequest)
-			return
-		}
+	codeVerifier := r.Form.Get("code_verifier")
+	if codeVerifier == "" {
+		http.Error(w, "code_verifier required", http.StatusBadRequest)
+		return
 	}
-
+	if authData.CodeChallengeMethod != "S256" {
+		http.Error(w, "unsupported code_challenge_method", http.StatusBadRequest)
+		return
+	}
+	s256 := sha256.Sum256([]byte(codeVerifier))
+	challenge := base64.RawURLEncoding.EncodeToString(s256[:])
+	if challenge != authData.CodeChallenge {
+		http.Error(w, "invalid code_verifier", http.StatusBadRequest)
+		return
+	}
 	if err := f.store.DeleteAuthCode(code); err != nil {
 		slog.Error("failed to delete auth code", "err", err)
 		http.Error(w, "failed to delete auth code", http.StatusInternalServerError)
 		return
 	}
-	// TODO: Validate the client ID and client secret.
-
+	clientID := r.Form.Get("client_id")
+	clientSecret := r.Form.Get("client_secret")
+	ok, err = f.store.VerifyClient(clientID, clientSecret)
+	if err != nil || !ok {
+		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
+		return
+	}
 	accessToken, err := f.store.LoadAccessToken(code)
 	if err != nil {
-		slog.Error("failed to load access token", "err", err)
 		http.Error(w, "failed to load access token", http.StatusInternalServerError)
 		return
 	}
-
+	refreshToken, err := f.config.NewRefreshTokenFunc(r)
+	if err != nil {
+		http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
+		return
+	}
+	if err := f.store.StoreRefreshToken(refreshToken, RefreshTokenData{AccessToken: accessToken}); err != nil {
+		http.Error(w, "failed to store refresh token", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	resp := TokenResponse{
-		AccessToken: accessToken,
-		TokenType:   "bearer",
+		AccessToken:  accessToken,
+		TokenType:    "bearer",
+		ExpiresIn:    3600,
+		RefreshToken: refreshToken,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		slog.Error("failed to write token response", "err", err)
-		// http status is already sent
 	}
-	slog.Debug("exchanged code for access token", "code", code, "access_token", resp.AccessToken)
+}
+
+func (f *Flow) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request) {
+	refreshToken := r.Form.Get("refresh_token")
+	if refreshToken == "" {
+		http.Error(w, "missing refresh_token", http.StatusBadRequest)
+		return
+	}
+	_, err := f.store.GetRefreshToken(refreshToken)
+	if err != nil {
+		http.Error(w, "invalid refresh_token", http.StatusBadRequest)
+		return
+	}
+	if err := f.store.DeleteRefreshToken(refreshToken); err != nil {
+		slog.Error("failed to delete refresh token", "err", err)
+		http.Error(w, "failed to delete refresh token", http.StatusInternalServerError)
+		return
+	}
+	newAccessToken, err := f.config.NewAccessTokenFunc(r)
+	if err != nil {
+		http.Error(w, "failed to create access token", http.StatusInternalServerError)
+		return
+	}
+	newRefreshToken, err := f.config.NewRefreshTokenFunc(r)
+	if err != nil {
+		http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
+		return
+	}
+	if err := f.store.StoreRefreshToken(newRefreshToken, RefreshTokenData{AccessToken: newAccessToken}); err != nil {
+		http.Error(w, "failed to store refresh token", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	resp := TokenResponse{
+		AccessToken:  newAccessToken,
+		TokenType:    "bearer",
+		ExpiresIn:    3600,
+		RefreshToken: newRefreshToken,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("failed to write token response", "err", err)
+	}
 }

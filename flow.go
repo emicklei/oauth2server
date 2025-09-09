@@ -25,6 +25,8 @@ type FlowConfig struct {
 	NewAuthCodeFunc func(r *http.Request) string
 	// For generating new access tokens.
 	NewAccessTokenFunc func(r *http.Request) (string, error)
+	// For generating new refresh tokens.
+	NewRefreshTokenFunc func(r *http.Request) (string, error)
 
 	LoginEndpoint             string
 	AuthorizationBaseEndpoint string
@@ -41,11 +43,15 @@ type FlowStateStore interface {
 	StoreAccessToken(code, token string) error
 	LoadAccessToken(code string) (string, error)
 	VerifyAccessToken(token string) (bool, error)
-	RegisterClient(clientID, clientSecret string) error
+	RegisterClient(client Client) error
+	GetClient(clientID string) (*Client, error)
 	VerifyClient(clientID, clientSecret string) (bool, error)
 	StoreAuthCode(code string, data AuthCodeData) error
 	VerifyAuthCode(code string) (AuthCodeData, bool, error)
 	DeleteAuthCode(code string) error
+	StoreRefreshToken(token string, data RefreshTokenData) error
+	GetRefreshToken(token string) (*RefreshTokenData, error)
+	DeleteRefreshToken(token string) error
 }
 
 func (f *Flow) RegisterHandlers(mux *http.ServeMux) {

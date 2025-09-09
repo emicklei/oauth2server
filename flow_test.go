@@ -54,6 +54,9 @@ func TestOAuth2Flow(t *testing.T) {
 		NewAccessTokenFunc: func(r *http.Request) (string, error) {
 			return "test-access-token", nil
 		},
+		NewRefreshTokenFunc: func(r *http.Request) (string, error) {
+			return "test-refresh-token", nil
+		},
 		LoginEndpoint:             local.URL + "/login",
 		AuthorizationBaseEndpoint: local.URL,
 		ResourcePath:              "/test-protected",

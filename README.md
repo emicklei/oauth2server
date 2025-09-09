@@ -1,12 +1,14 @@
-# OAuth2 server package
+# OAuth 2.1 server package
 [![Build Status](https://github.com/emicklei/oauth2server/actions/workflows/test.yml/badge.svg)](https://github.com/emicklei/oauth2server/actions/workflows/test.yml)
 
-This is a simple OAuth2 server package in Go.
+This is a simple OAuth 2.1 server package in Go.
 
 ## Features
 
 - Zero dependencies
-- OAuth 2.0 Authorization Server Metadata.
+- OAuth 2.1 compliant
+- Authorization Code Grant with PKCE (S256)
+- Refresh Tokens with rotation
 - Dynamic Client Registration
 - Pluggable behavior via Config
 

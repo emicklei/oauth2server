@@ -10,9 +10,32 @@ import (
 func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling authorize", "url", r.URL.String())
 
-	// TODO. validate the client_id, redirect_uri, etc.
-	// and prompt the user for consent.
-	// For this example, we'll just redirect.
+	clientID := r.URL.Query().Get("client_id")
+	if clientID == "" {
+		http.Error(w, "client_id is required", http.StatusBadRequest)
+		return
+	}
+	client, err := f.store.GetClient(clientID)
+	if err != nil {
+		http.Error(w, "invalid client_id", http.StatusBadRequest)
+		return
+	}
+	redirectURI := r.URL.Query().Get("redirect_uri")
+	if redirectURI == "" {
+		http.Error(w, "redirect_uri is required", http.StatusBadRequest)
+		return
+	}
+	var found bool
+	for _, ruri := range client.RedirectURIs {
+		if ruri == redirectURI {
+			found = true
+			break
+		}
+	}
+	if !found {
+		http.Error(w, "invalid redirect_uri", http.StatusBadRequest)
+		return
+	}
 
 	newURL, err := url.Parse(f.config.LoginEndpoint)
 	if err != nil {
