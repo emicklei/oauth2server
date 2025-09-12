@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"path"
+	"net/url"
 )
 
 const OauthServerMetadataPath = "/.well-known/oauth-authorization-server"
@@ -13,11 +13,14 @@ func (f *Flow) OauthServerMetadata(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling oauth server metadata", "url", r.URL.String())
 
 	host := f.config.AuthorizationBaseEndpoint
+	aPath, _ := url.JoinPath(host, f.config.AuthorizePath)
+	tPath, _ := url.JoinPath(host, f.config.TokenPath)
+	rPath, _ := url.JoinPath(host, f.config.RegisterPath)
 	metadata := OauthServerMetadata{
 		Issuer:                host,
-		AuthorizationEndpoint: path.Join(host, f.config.AuthorizePath),
-		TokenEndpoint:         path.Join(host, f.config.TokenPath),
-		RegistrationEndpoint:  path.Join(host, f.config.RegisterPath),
+		AuthorizationEndpoint: aPath,
+		TokenEndpoint:         tPath,
+		RegistrationEndpoint:  rPath,
 		ScopesSupported:       f.config.AuthorizationScopes,
 
 		// these are fixed for this implementation
