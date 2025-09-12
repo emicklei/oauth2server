@@ -25,6 +25,7 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Debug("parsed client_query", "vals", vals)
+	clientID := vals.Get("client_id")
 	redirectUri := vals.Get("redirect_uri")
 	if redirectUri == "" {
 		slog.Warn("missing redirect_uri", "vals", vals)
@@ -46,7 +47,12 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := f.config.NewAuthCodeFunc(r)
+	code, err := f.config.NewAuthCodeFunc(r)
+	if err != nil {
+		slog.Error("failed to create auth code", "err", err)
+		http.Error(w, "failed to create auth code", http.StatusInternalServerError)
+		return
+	}
 	codeChallenge := vals.Get("code_challenge")
 	if codeChallenge == "" {
 		http.Error(w, "missing code_challenge", http.StatusBadRequest)
@@ -61,13 +67,13 @@ func (f *Flow) AuthenticatedHandler(w http.ResponseWriter, r *http.Request) {
 		CodeChallenge:       codeChallenge,
 		CodeChallengeMethod: codeChallengeMethod,
 	}
-	if err := f.store.StoreAuthCode(code, data); err != nil {
+	if err := f.store.StoreAuthCode(r.Context(), clientID, code, data); err != nil {
 		slog.Error("failed to store auth data", "err", err)
 		http.Error(w, "failed to store auth data", http.StatusInternalServerError)
 		return
 	}
 
-	if err := f.store.StoreAccessToken(code, accessToken); err != nil {
+	if err := f.store.StoreAccessToken(r.Context(), clientID, code, accessToken); err != nil {
 		slog.Error("failed to store access token", "err", err)
 		http.Error(w, "failed to store access token", http.StatusInternalServerError)
 		return

@@ -16,7 +16,7 @@ func (f *Flow) AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "client_id is required", http.StatusBadRequest)
 		return
 	}
-	client, err := f.store.GetClient(clientID)
+	client, err := f.store.GetClient(r.Context(), clientID)
 	if err != nil {
 		slog.Warn("failed to get client", "client_id", clientID, "error", err)
 		http.Error(w, "invalid client_id (clear DCR cache if applicable)", http.StatusBadRequest)

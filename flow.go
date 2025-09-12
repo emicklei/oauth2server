@@ -1,6 +1,7 @@
 package oauth2server
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -27,13 +28,14 @@ func NewFlow(config FlowConfig, store FlowStateStore) *Flow {
 }
 
 type FlowConfig struct {
+	// The name of the HTTP header to use for passing the access token to the resource server.
 	AccessTokenHeaderName string
 	// The resource protected by OAuth2.
 	ResourceHandlerFunc http.HandlerFunc
 	// For dynamic client registration.
-	NewClientSecretFunc func(r *http.Request) string
+	NewClientSecretFunc func(r *http.Request) (string, error)
 	// For generating new authorization codes.
-	NewAuthCodeFunc func(r *http.Request) string
+	NewAuthCodeFunc func(r *http.Request) (string, error)
 	// For generating new access tokens.
 	NewAccessTokenFunc func(r *http.Request) (string, error)
 	// For generating new refresh tokens.
@@ -100,20 +102,22 @@ func (c *FlowConfig) Validate() (list []error) {
 }
 
 type FlowStateStore interface {
-	StoreAccessToken(code, token string) error
-	LoadAccessToken(code string) (string, error)
-	VerifyAccessToken(token string) (bool, error)
-	RegisterClient(client Client) error
-	GetClient(clientID string) (*Client, error)
-	VerifyClient(clientID, clientSecret string) (bool, error)
-	StoreAuthCode(code string, data AuthCodeData) error
-	VerifyAuthCode(code string) (AuthCodeData, bool, error)
-	DeleteAuthCode(code string) error
-	StoreRefreshToken(token string, data RefreshTokenData) error
-	GetRefreshToken(token string) (*RefreshTokenData, error)
-	DeleteRefreshToken(token string) error
+	StoreAccessToken(ctx context.Context, clientID string, code, token string) error
+	LoadAccessToken(ctx context.Context, clientID string, code string) (string, error)
+	// The call to the protected resource includes the access token only; no clientID.
+	VerifyAccessToken(ctx context.Context, token string) (bool, error)
+	RegisterClient(ctx context.Context, client Client) error
+	GetClient(ctx context.Context, clientID string) (*Client, error)
+	VerifyClient(ctx context.Context, clientID, clientSecret string) (bool, error)
+	StoreAuthCode(ctx context.Context, clientID string, code string, data AuthCodeData) error
+	VerifyAuthCode(ctx context.Context, clientID string, code string) (AuthCodeData, bool, error)
+	DeleteAuthCode(ctx context.Context, clientID string, code string) error
+	StoreRefreshToken(ctx context.Context, clientID string, token string, data RefreshTokenData) error
+	GetRefreshToken(ctx context.Context, clientID string, token string) (*RefreshTokenData, error)
+	DeleteRefreshToken(ctx context.Context, clientID string, token string) error
 }
 
+// RegisterHandlers registers the HTTP handlers for the OAuth2 flow.
 func (f *Flow) RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc(OauthServerMetadataPath, f.OauthServerMetadata)
 	mux.HandleFunc(f.config.AuthorizePath, f.AuthorizeHandler)

@@ -34,13 +34,14 @@ func (f *Flow) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling authorization_code grant")
+	clientID := r.Form.Get("client_id")
 	code := r.Form.Get("code")
 	if code == "" {
 		slog.Error("missing code")
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return
 	}
-	authData, ok, err := f.store.VerifyAuthCode(code)
+	authData, ok, err := f.store.VerifyAuthCode(r.Context(), clientID, code)
 	if err != nil {
 		slog.Error("failed to verify auth code", "err", err)
 		http.Error(w, "failed to verify auth code", http.StatusInternalServerError)
@@ -70,14 +71,13 @@ func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "invalid code_verifier", http.StatusBadRequest)
 		return
 	}
-	if err := f.store.DeleteAuthCode(code); err != nil {
+	if err := f.store.DeleteAuthCode(r.Context(), clientID, code); err != nil {
 		slog.Error("failed to delete auth code", "err", err)
 		http.Error(w, "failed to delete auth code", http.StatusInternalServerError)
 		return
 	}
-	clientID := r.Form.Get("client_id")
 	clientSecret := r.Form.Get("client_secret")
-	ok, err = f.store.VerifyClient(clientID, clientSecret)
+	ok, err = f.store.VerifyClient(r.Context(), clientID, clientSecret)
 	if err != nil {
 		slog.Error("failed to verify client", "err", err)
 		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
@@ -88,7 +88,7 @@ func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
 		return
 	}
-	accessToken, err := f.store.LoadAccessToken(code)
+	accessToken, err := f.store.LoadAccessToken(r.Context(), clientID, code)
 	if err != nil {
 		slog.Error("failed to load access token", "err", err)
 		http.Error(w, "failed to load access token", http.StatusInternalServerError)
@@ -100,7 +100,7 @@ func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
 		return
 	}
-	if err := f.store.StoreRefreshToken(refreshToken, RefreshTokenData{AccessToken: accessToken}); err != nil {
+	if err := f.store.StoreRefreshToken(r.Context(), clientID, refreshToken, RefreshTokenData{AccessToken: accessToken}); err != nil {
 		slog.Error("failed to store refresh token", "err", err)
 		http.Error(w, "failed to store refresh token", http.StatusInternalServerError)
 		return
@@ -120,19 +120,20 @@ func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Reque
 
 func (f *Flow) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handling refresh_token grant")
+	clientID := r.Form.Get("client_id")
 	refreshToken := r.Form.Get("refresh_token")
 	if refreshToken == "" {
 		slog.Error("missing refresh_token")
 		http.Error(w, "missing refresh_token", http.StatusBadRequest)
 		return
 	}
-	_, err := f.store.GetRefreshToken(refreshToken)
+	_, err := f.store.GetRefreshToken(r.Context(), clientID, refreshToken)
 	if err != nil {
 		slog.Error("invalid refresh_token", "err", err)
 		http.Error(w, "invalid refresh_token", http.StatusBadRequest)
 		return
 	}
-	if err := f.store.DeleteRefreshToken(refreshToken); err != nil {
+	if err := f.store.DeleteRefreshToken(r.Context(), clientID, refreshToken); err != nil {
 		slog.Error("failed to delete refresh token", "err", err)
 		http.Error(w, "failed to delete refresh token", http.StatusInternalServerError)
 		return
@@ -149,7 +150,7 @@ func (f *Flow) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
 		return
 	}
-	if err := f.store.StoreRefreshToken(newRefreshToken, RefreshTokenData{AccessToken: newAccessToken}); err != nil {
+	if err := f.store.StoreRefreshToken(r.Context(), clientID, newRefreshToken, RefreshTokenData{AccessToken: newAccessToken}); err != nil {
 		slog.Error("failed to store refresh token", "err", err)
 		http.Error(w, "failed to store refresh token", http.StatusInternalServerError)
 		return

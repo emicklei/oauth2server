@@ -49,11 +49,11 @@ func TestOAuth2Flow(t *testing.T) {
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Protected Resource Accessed"))
 		},
-		NewClientSecretFunc: func(r *http.Request) string {
-			return "test-secret"
+		NewClientSecretFunc: func(r *http.Request) (string, error) {
+			return "test-secret", nil
 		},
-		NewAuthCodeFunc: func(r *http.Request) string {
-			return randSeq(32)
+		NewAuthCodeFunc: func(r *http.Request) (string, error) {
+			return randSeq(32), nil
 		},
 		NewAccessTokenFunc: func(r *http.Request) (string, error) {
 			return "test-access-token", nil

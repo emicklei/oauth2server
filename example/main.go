@@ -15,8 +15,8 @@ func main() {
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Protected Resource Accessed:", r.Header.Get("X-Access-Token"))
 		},
-		NewClientSecretFunc: func(r *http.Request) string {
-			return uuid.NewString()
+		NewClientSecretFunc: func(r *http.Request) (string, error) {
+			return uuid.NewString(), nil
 		},
 		NewAccessTokenFunc: func(r *http.Request) (string, error) {
 			return uuid.NewString(), nil
@@ -24,8 +24,8 @@ func main() {
 		NewRefreshTokenFunc: func(r *http.Request) (string, error) {
 			return uuid.NewString(), nil
 		},
-		NewAuthCodeFunc: func(r *http.Request) string {
-			return uuid.NewString()
+		NewAuthCodeFunc: func(r *http.Request) (string, error) {
+			return uuid.NewString(), nil
 		},
 		RegisterPath:              "/oauth2/register",
 		AuthorizePath:             "/oauth2/authorize",

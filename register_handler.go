@@ -43,13 +43,18 @@ func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "client_name and redirect_uris are required", http.StatusBadRequest)
 		return
 	}
-
+	secret, err := f.config.NewClientSecretFunc(r)
+	if err != nil {
+		slog.Error("failed to create client secret", "err", err)
+		http.Error(w, "failed to create client secret", http.StatusInternalServerError)
+		return
+	}
 	client := Client{
 		ID:           randSeq(32),
-		Secret:       f.config.NewClientSecretFunc(r),
+		Secret:       secret,
 		RedirectURIs: req.RedirectURIs,
 	}
-	if err := f.store.RegisterClient(client); err != nil {
+	if err := f.store.RegisterClient(r.Context(), client); err != nil {
 		slog.Error("failed to register client", "err", err)
 		http.Error(w, "failed to register client", http.StatusInternalServerError)
 		return
