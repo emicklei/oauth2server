@@ -76,14 +76,14 @@ func (f *Flow) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "failed to delete auth code", http.StatusInternalServerError)
 		return
 	}
-	clientSecret := r.Form.Get("client_secret")
-	ok, err = f.store.VerifyClient(r.Context(), clientID, clientSecret)
+	client, err := f.store.GetClient(r.Context(), clientID)
 	if err != nil {
 		slog.Error("failed to verify client", "err", err)
 		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
 		return
 	}
-	if !ok {
+	clientSecret := r.Form.Get("client_secret")
+	if client.Secret != clientSecret {
 		slog.Error("invalid client credentials")
 		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
 		return

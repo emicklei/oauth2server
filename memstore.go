@@ -40,14 +40,6 @@ func (s *InMemoryFlowStore) GetClient(ctx context.Context, clientID string) (*Cl
 	return &client, nil
 }
 
-func (s *InMemoryFlowStore) VerifyClient(ctx context.Context, clientID, clientSecret string) (bool, error) {
-	client, ok := s.clients[clientID]
-	if !ok {
-		return false, nil
-	}
-	return client.Secret == clientSecret, nil
-}
-
 func (s *InMemoryFlowStore) StoreAuthCode(ctx context.Context, clientID string, code string, data AuthCodeData) error {
 	s.authCodes[code] = data
 	return nil

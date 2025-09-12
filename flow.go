@@ -108,7 +108,6 @@ type FlowStateStore interface {
 	VerifyAccessToken(ctx context.Context, token string) (bool, error)
 	RegisterClient(ctx context.Context, client Client) error
 	GetClient(ctx context.Context, clientID string) (*Client, error)
-	VerifyClient(ctx context.Context, clientID, clientSecret string) (bool, error)
 	StoreAuthCode(ctx context.Context, clientID string, code string, data AuthCodeData) error
 	VerifyAuthCode(ctx context.Context, clientID string, code string) (AuthCodeData, bool, error)
 	DeleteAuthCode(ctx context.Context, clientID string, code string) error
