@@ -40,6 +40,8 @@ type FlowConfig struct {
 	NewAccessTokenFunc func(r *http.Request) (string, error)
 	// For generating new refresh tokens.
 	NewRefreshTokenFunc func(r *http.Request) (string, error)
+	// The number of seconds for which the access token is valid.
+	AccessTokenExpiresIn int
 
 	LoginEndpoint             string
 	AuthorizationBaseEndpoint string
@@ -67,6 +69,9 @@ func (c *FlowConfig) Validate() (list []error) {
 	}
 	if c.NewRefreshTokenFunc == nil {
 		list = append(list, errors.New("NewRefreshTokenFunc must be provided"))
+	}
+	if c.AccessTokenExpiresIn == 0 {
+		list = append(list, errors.New("AccessTokenExpiresIn must be provided"))
 	}
 	if c.LoginEndpoint == "" {
 		list = append(list, errors.New("LoginEndpoint must be provided"))

@@ -11,6 +11,7 @@ import (
 
 func main() {
 	config := oauth2server.FlowConfig{
+		AccessTokenExpiresIn:  3600,
 		AccessTokenHeaderName: "X-Access-Token",
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Protected Resource Accessed:", r.Header.Get("X-Access-Token"))

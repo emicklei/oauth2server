@@ -127,7 +127,19 @@ func (f *Flow) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing refresh_token", http.StatusBadRequest)
 		return
 	}
-	_, err := f.store.GetRefreshToken(r.Context(), clientID, refreshToken)
+	client, err := f.store.GetClient(r.Context(), clientID)
+	if err != nil {
+		slog.Error("failed to verify client", "err", err)
+		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
+		return
+	}
+	clientSecret := r.Form.Get("client_secret")
+	if client.Secret != clientSecret {
+		slog.Error("invalid client credentials")
+		http.Error(w, "invalid client credentials", http.StatusUnauthorized)
+		return
+	}
+	_, err = f.store.GetRefreshToken(r.Context(), clientID, refreshToken)
 	if err != nil {
 		slog.Error("invalid refresh_token", "err", err)
 		http.Error(w, "invalid refresh_token", http.StatusBadRequest)
@@ -159,7 +171,7 @@ func (f *Flow) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request) {
 	resp := TokenResponse{
 		AccessToken:  newAccessToken,
 		TokenType:    "bearer",
-		ExpiresIn:    3600,
+		ExpiresIn:    f.config.AccessTokenExpiresIn,
 		RefreshToken: newRefreshToken,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

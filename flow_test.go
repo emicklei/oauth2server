@@ -45,6 +45,7 @@ func TestOAuth2Flow(t *testing.T) {
 
 	store := NewInMemoryFlowStore()
 	config := FlowConfig{
+		AccessTokenExpiresIn:  3600,
 		AccessTokenHeaderName: "X-Access-Token",
 		ResourceHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Protected Resource Accessed"))

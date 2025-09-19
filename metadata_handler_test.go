@@ -9,6 +9,7 @@ import (
 
 func TestOauthServerMetadata(t *testing.T) {
 	config := FlowConfig{
+		AccessTokenExpiresIn:      3600,
 		AuthorizationBaseEndpoint: "http://localhost:8080",
 		AuthorizePath:             "/oauth2/authorize",
 		TokenPath:                 "/oauth2/token",
