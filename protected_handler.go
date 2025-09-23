@@ -7,7 +7,11 @@ import (
 )
 
 func (f *Flow) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("handling protected", "url", r.URL.String())
+	if slog.Default().Enabled(r.Context(), slog.LevelDebug) {
+		cpy := r.Header.Clone()
+		cpy.Set("Authorization", "*** masked ***")
+		slog.Debug("handling protected", "url", r.URL.String(), "header", cpy)
+	}
 
 	h := f.config.ResourceHandlerFunc
 	if h == nil {
