@@ -1,5 +1,6 @@
 # OAuth 2.1 server package
 [![Build Status](https://github.com/emicklei/oauth2server/actions/workflows/test.yml/badge.svg)](https://github.com/emicklei/oauth2server/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/emicklei/oauth2server/branch/main/graph/badge.svg)](https://codecov.io/gh/emicklei/oauth2server)
 
 This is a simple OAuth 2.1 server package in Go.
 
