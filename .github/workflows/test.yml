@@ -21,7 +21,7 @@ jobs:
           go-version: "1.25"
 
       - name: Test with coverage
-        run: go test -v -coverprofile=coverage.txt ./...
+        run: go test -v -coverprofile=coverage.txt .
 
       - name: Report coverage
         run: go tool cover -func=coverage.txt
