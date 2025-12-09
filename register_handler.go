@@ -23,9 +23,8 @@ func (f *Flow) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid registration request", http.StatusBadRequest)
 			return
 		}
-	}
 	// if payload is sent as form data, parse it
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+	} else if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 		if err := r.ParseForm(); err == nil {
 			req.ClientName = r.Form.Get("client_name")
 			req.RedirectURIs = r.Form["redirect_uris"]
